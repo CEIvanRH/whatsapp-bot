@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp CRM</title>
+    <style>
+        /* --- ESTILOS GENERALES (DISEÑO TIPO WHATSAPP WEB) --- */
+        body { margin: 0; font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #d1d7db; height: 100vh; overflow: hidden; }
+        .app-container { display: flex; height: 100vh; width: 100%; max-width: 1600px; margin: 0 auto; background-color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        /* --- BARRA LATERAL (LISTA DE CONTACTOS) --- */
+        .sidebar { width: 30%; border-right: 1px solid #e9edef; display: flex; flex-direction: column; background: white; }
+        .sidebar-header { background-color: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #d1d7db; }
+        .btn-masivo { background-color: #00a884; color: white; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-masivo:hover { background-color: #008f6f; }
+        
+        .search-box { padding: 10px; background: white; border-bottom: 1px solid #f0f2f5; }
+        .search-box input { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #f0f2f5; background-color: #f0f2f5; text-align: center; }
+        
+        .contact-list { flex: 1; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f5f6f6; }
+        .contact-item:hover { background-color: #f5f6f6; }
+        .contact-item.active { background-color: #f0f2f5; }
+        .avatar { width: 45px; height: 45px; background-color: #dfe5e7; border-radius: 50%; margin-right: 15px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white; }
+        .contact-info { flex: 1; }
+        .contact-name { font-weight: 600; font-size: 16px; color: #111b21; }
+        .last-msg { font-size: 13px; color: #667781; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+        /* --- ZONA DE CHAT (DERECHA) --- */
+        .chat-area { flex: 1; display: flex; flex-direction: column; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-color: #efeae2; }
+        .chat-header { background-color: #f0f2f5; padding: 10px 16px; height: 60px; display: flex; align-items: center; border-bottom: 1px solid #d1d7db; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        .message { max-width: 60%; padding: 8px 12px; border-radius: 8px; font-size: 14.2px; line-height: 19px; position: relative; word-wrap: break-word; }
+        .msg-in { align-self: flex-start; background-color: white; border-radius: 0 8px 8px 8px; }
+        .msg-out { align-self: flex-end; background-color: #d9fdd3; border-radius: 8px 0 8px 8px; }
+        .msg-time { font-size: 11px; color: #667781; text-align: right; margin-top: 4px; }
+
+        .chat-input-area { background-color: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+        .chat-input { flex: 1; padding: 12px; border-radius: 8px; border: none; outline: none; font-size: 15px; }
+        .btn-send { background: none; border: none; cursor: pointer; font-size: 24px; color: #54656f; }
+
+        /* --- MODAL MASIVO (VENTANA EMERGENTE) --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; width: 400px; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal h3 { margin-top: 0; color: #00a884; }
+        .modal textarea { width: 100%; height: 80px; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #ddd; }
+        .modal input { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ddd; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-close { background: #ccc; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        .btn-confirm { background: #00a884; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="avatar" style="background: #ccc;">YO</div>
+            <button class="btn-masivo" onclick="abrirModalMasivo()">📢 Difusión</button>
+        </div>
+        <div class="search-box">
+            <input type="text" placeholder="Buscar o iniciar nuevo chat">
+        </div>
+        <div class="contact-list" id="listaContactos">
+            </div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header" id="chatHeader">
+            <div class="contact-name">Selecciona un chat</div>
+        </div>
+        
+        <div class="chat-messages" id="mensajesArea">
+            <div style="text-align: center; margin-top: 50px; color: #666;">
+                Bienvenido a tu propio WhatsApp.<br>Selecciona un contacto para ver el historial.
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" id="inputMensaje" placeholder="Escribe un mensaje">
+            <button class="btn-send" onclick="enviarMensaje()">➤</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="modalMasivo">
+    <div class="modal-content">
+        <h3>📢 Enviar Mensaje Masivo</h3>
+        <p>Ingresa los números separados por coma (,)</p>
+        <input type="text" id="numerosMasivos" placeholder="Ej: 51999888777, 51999111222">
+        <textarea id="textoMasivo" placeholder="Escribe el mensaje (Se enviará como plantilla si es el primero)"></textarea>
+        <div class="modal-buttons">
+            <button class="btn-close" onclick="cerrarModalMasivo()">Cancelar</button>
+            <button class="btn-confirm" onclick="enviarMasivo()">ENVIAR A TODOS</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- VARIABLES GLOBALES ---
+    let chatActual = null;
+    let historialGlobal = {}; 
+
+    // 1. CARGA DE DATOS (CONEXIÓN CON SERVER)
+    async function actualizarDatos() {
+        try {
+            // Pide al servidor Node.js el contenido de database.json
+            const respuesta = await fetch('/api/historial');
+            const nuevosDatos = await respuesta.json();
+            
+            historialGlobal = nuevosDatos;
+            renderizarListaContactos();
+            
+            // Si hay un chat abierto, actualizamos sus mensajes
+            if(chatActual) {
+                renderizarMensajes();
+            }
+        } catch (error) {
+            console.error("Error obteniendo datos del servidor", error);
+        }
+    }
+
+    // 2. DIBUJAR LISTA DE CONTACTOS (IZQUIERDA)
+    function renderizarListaContactos() {
+        const lista = document.getElementById('listaContactos');
+        // No borramos todo si ya hay items, para evitar parpadeo visual (mejora simple)
+        // Pero por simplicidad en este paso, reconstruimos:
+        lista.innerHTML = "";
+        
+        const numeros = Object.keys(historialGlobal);
+
+        if (numeros.length === 0) {
+            lista.innerHTML = "<div style='padding:20px; text-align:center; color:#888'>No hay chats aún.</div>";
+            return;
+        }
+
+        numeros.forEach(numero => {
+            const msjs = historialGlobal[numero];
+            if(msjs.length === 0) return;
+
+            const ultimoMsj = msjs[msjs.length - 1];
+            const textoCorto = ultimoMsj.texto.length > 30 ? ultimoMsj.texto.substring(0,30) + "..." : ultimoMsj.texto;
+            
+            const item = document.createElement('div');
+            item.className = `contact-item ${chatActual === numero ? 'active' : ''}`;
+            item.onclick = () => abrirChat(numero);
+            
+            item.innerHTML = `
+                <div class="avatar" style="background-color: ${getColor(numero)}">👤</div>
+                <div class="contact-info">
+                    <div class="contact-name">${numero}</div>
+                    <div class="last-msg">${textoCorto}</div>
+                </div>
+                <div style="font-size:11px; color:#888;">${ultimoMsj.hora}</div>
+            `;
+            lista.appendChild(item);
+        });
+    }
+
+    // 3. ABRIR UN CHAT ESPECÍFICO
+    function abrirChat(numero) {
+        chatActual = numero;
+        document.getElementById('chatHeader').innerHTML = `
+            <div class="avatar" style="background-color: ${getColor(numero)}">👤</div>
+            <div class="contact-name">${numero}</div>
+        `;
+        renderizarMensajes();
+        renderizarListaContactos(); // Para refrescar el color gris de "seleccionado"
+    }
+
+    // 4. DIBUJAR MENSAJES (DERECHA)
+    function renderizarMensajes() {
+        const area = document.getElementById('mensajesArea');
+        
+        // Guardar scroll
+        const scrollPos = area.scrollTop;
+        const estabaAbajo = (area.scrollHeight - area.scrollTop) <= (area.clientHeight + 50);
+
+        area.innerHTML = "";
+        
+        if(historialGlobal[chatActual]) {
+            historialGlobal[chatActual].forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `message ${msg.tipo === 'out' ? 'msg-out' : 'msg-in'}`;
+                div.innerHTML = `${msg.texto} <div class="msg-time">${msg.hora}</div>`;
+                area.appendChild(div);
+            });
+        }
+        
+        // Si estaba abajo, mantener abajo. Si es nuevo chat, ir abajo.
+        if(estabaAbajo || area.innerHTML === "") { 
+            area.scrollTop = area.scrollHeight; 
+        } else {
+            area.scrollTop = scrollPos;
+        }
+    }
+
+    // 5. ENVIAR MENSAJE (INDIVIDUAL)
+    async function enviarMensaje() {
+        const texto = document.getElementById('inputMensaje').value;
+        if(!texto || !chatActual) return;
+
+        document.getElementById('inputMensaje').value = ""; // Limpiar input
+
+        try {
+            await fetch('/api/enviar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telefono: chatActual, tipo: "texto", contenido: texto })
+            });
+            // Al enviar, forzamos actualización inmediata
+            actualizarDatos();
+        } catch (e) {
+            alert("Error enviando mensaje");
+        }
+    }
+
+    // 6. ENVIAR MENSAJE (MASIVO)
+    function abrirModalMasivo() { document.getElementById('modalMasivo').style.display = 'flex'; }
+    function cerrarModalMasivo() { document.getElementById('modalMasivo').style.display = 'none'; }
+    
+    async function enviarMasivo() {
+        const numeros = document.getElementById('numerosMasivos').value.split(',');
+        const mensaje = document.getElementById('textoMasivo').value;
+        
+        if(!mensaje || numeros.length === 0) return alert("Faltan datos");
+
+        alert(`Iniciando envío a ${numeros.length} contactos...`);
+        
+        for (let num of numeros) {
+            let n = num.trim();
+            if(n) {
+                await fetch('/api/enviar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // IMPORTANTE: En masivos se suele usar "plantilla" si es primer contacto
+                    // Aquí mandamos como plantilla "hello_world" por defecto para asegurar entrega
+                    // O texto si ya hablaste con ellos. Por seguridad usaremos Plantilla aquí.
+                    body: JSON.stringify({ telefono: n, tipo: "plantilla", contenido: mensaje }) 
+                });
+            }
+        }
+        alert("Envíos completados.");
+        cerrarModalMasivo();
+        actualizarDatos();
+    }
+
+    // 7. UTILIDADES
+    function getColor(str) {
+        const colors = ['#00a884', '#34b7f1', '#ffa500', '#e91e63', '#795548'];
+        return colors[str.length % colors.length];
+    }
+
+    // --- AUTO-INICIO ---
+    // 1. Cargar datos al abrir
+    actualizarDatos();
+    
+    // 2. Revisar nuevos mensajes automáticamente cada 3 segundos
+    setInterval(actualizarDatos, 3000); 
+
+</script>
+</body>
+</html>
