@@ -59,23 +59,22 @@ app.post("/api/enviar", async (req, res) => {
             type: "text", 
             text: { body: contenido } 
         };
-    } else if (tipo === "plantilla") {
-        // AQUÍ ESTÁ EL CAMBIO IMPORTANTE:
-        // Usamos la variable 'nombrePlantilla'. Si no viene nada, usa "hello_world" por seguridad.
-        // Cambiamos 'en_US' por 'es' para que coincida con tus plantillas en español.
+} else if (tipo === "plantilla") {
         const templateName = nombrePlantilla || "hello_world";
         
+        // SI ES "hello_world", USAMOS INGLÉS. SI NO, ESPAÑOL.
+        const idioma = templateName === "hello_world" ? "en_US" : "es_PE";
+
         dataMeta = { 
             messaging_product: "whatsapp", 
             to: telefono, 
             type: "template", 
             template: { 
                 name: templateName, 
-                language: { code: "es" } // "es" para Español (importante para tus plantillas)
+                language: { code: idioma } 
             } 
         };
     }
-
     try {
         await axios.post(url, dataMeta, {
             headers: { "Authorization": `Bearer ${TOKEN}`, "Content-Type": "application/json" }
