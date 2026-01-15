@@ -3,24 +3,25 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config(); // <--- ESTO ES LO NUEVO
+require("dotenv").config(); 
 
 const app = express();
 app.use(bodyParser.json());
 
-// --- AHORA USAMOS VARIABLES DE ENTORNO (PRIVADAS) ---
+// --- VARIABLES DE ENTORNO ---
 const TOKEN = process.env.META_TOKEN; 
 const PHONE_ID = process.env.META_PHONE_ID; 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN; 
 const PORT = process.env.PORT || 3000; 
 const DB_FILE = "database.json";
+
 // --- FUNCIONES DE BASE DE DATOS (JSON) ---
 function leerDB() {
     try {
         const data = fs.readFileSync(DB_FILE, "utf8");
         return JSON.parse(data);
     } catch (error) {
-        return {}; // Si falla, retorna vacío
+        return {}; // Si falla o no existe, retorna vacío
     }
 }
 
@@ -39,9 +40,10 @@ app.get("/api/historial", (req, res) => {
     res.json(db);
 });
 
-// 3. API para ENVIAR mensajes
+// 3. API para ENVIAR mensajes (MODIFICADA PARA PLANTILLAS DINÁMICAS)
 app.post("/api/enviar", async (req, res) => {
-    const { telefono, tipo, contenido } = req.body;
+    // AHORA RECIBIMOS TAMBIÉN "nombrePlantilla"
+    const { telefono, tipo, contenido, nombrePlantilla } = req.body;
     const url = `https://graph.facebook.com/v17.0/${PHONE_ID}/messages`;
     
     let db = leerDB();
@@ -51,9 +53,27 @@ app.post("/api/enviar", async (req, res) => {
 
     // Configurar payload para Meta
     if (tipo === "texto") {
-        dataMeta = { messaging_product: "whatsapp", to: telefono, type: "text", text: { body: contenido } };
+        dataMeta = { 
+            messaging_product: "whatsapp", 
+            to: telefono, 
+            type: "text", 
+            text: { body: contenido } 
+        };
     } else if (tipo === "plantilla") {
-        dataMeta = { messaging_product: "whatsapp", to: telefono, type: "template", template: { name: "hello_world", language: { code: "en_US" } } };
+        // AQUÍ ESTÁ EL CAMBIO IMPORTANTE:
+        // Usamos la variable 'nombrePlantilla'. Si no viene nada, usa "hello_world" por seguridad.
+        // Cambiamos 'en_US' por 'es' para que coincida con tus plantillas en español.
+        const templateName = nombrePlantilla || "hello_world";
+        
+        dataMeta = { 
+            messaging_product: "whatsapp", 
+            to: telefono, 
+            type: "template", 
+            template: { 
+                name: templateName, 
+                language: { code: "es" } // "es" para Español (importante para tus plantillas)
+            } 
+        };
     }
 
     try {
@@ -62,15 +82,18 @@ app.post("/api/enviar", async (req, res) => {
         });
 
         // GUARDAR EN BD LOCAL
+        // Guardamos el nombre de la plantilla en el historial para que sepas qué enviaste
+        const textoGuardado = tipo === "plantilla" ? `🏷️ Plantilla: ${nombrePlantilla}` : contenido;
+
         db[telefono].push({ 
             tipo: "out", 
-            texto: contenido || "Plantilla Hello World", 
+            texto: textoGuardado, 
             hora: new Date().toLocaleTimeString() 
         });
         guardarDB(db);
 
         res.json({ success: true });
-        console.log(`📤 Enviado a ${telefono}`);
+        console.log(`📤 Enviado a ${telefono} [${tipo}]`);
     } catch (error) {
         console.error("Error enviando:", error.response ? error.response.data : error.message);
         res.json({ success: false });
